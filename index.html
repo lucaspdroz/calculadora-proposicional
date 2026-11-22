@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resolvedor de Lógica Proposicional</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fonte Inter & JetBrains Mono para símbolos lógicos nítidos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            bgMain: '#000000',
+            bgCard: '#070709',
+            borderSubtle: '#1f1f24',
+            keySlate: '#2b3453',
+            keySlateHover: '#364166',
+            keyGreen: '#386351',
+            keyGreenHover: '#437560',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #000000;
+      color: #f4f4f6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Botões do teclado fiel ao modelo visual */
+    .calc-key {
+      transition: transform 0.08s ease, background-color 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+    }
+    .calc-key:active {
+      transform: scale(0.96);
+    }
+
+    /* Scrollbar sutil */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0d;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272f;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a3a45;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start py-6 px-3 sm:px-6 lg:px-8 selection:bg-[#2b3453] selection:text-white">
+
+  <!-- Cabeçalho Principal -->
+  <header class="w-full max-w-6xl mb-6 flex items-center justify-between gap-4 border-b border-[#1c1c21] pb-4 relative">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#2b3453] text-white font-mono font-bold text-lg">⊢</span>
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Resolvedor de Lógica Proposicional</h1>
+      </div>
+      <p class="text-xs sm:text-sm text-zinc-400 mt-1">Dedução natural, equivalências lógicas e motor AST em tempo real</p>
+    </div>
+
+    <!-- Menu Hambúrguer com Seletor de Modo -->
+    <div class="relative" id="mode-menu-container">
+      <button
+        id="btn-hamburger"
+        type="button"
+        onclick="toggleModeMenu(event)"
+        aria-label="Abrir menu de seleção de modo"
+        aria-expanded="false"
+        class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-[#0d0d11] hover:bg-[#16161d] border border-[#222228] hover:border-[#2b3453] text-white transition-colors shadow-sm"
+      >
+        <span id="current-mode-badge" class="hidden sm:inline-block text-xs font-medium text-zinc-300">
+          Ambos (Auto + Manual)
+        </span>
+        <!-- Ícone Hambúrguer -->
+        <svg id="icon-hamburger" class="w-5 h-5 text-zinc-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+        <!-- Ícone Fechar (X) -->
+        <svg id="icon-close-menu" class="w-5 h-5 text-zinc-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+
+      <!-- Dropdown do Menu Hambúrguer -->
+      <div
+        id="mode-dropdown"
+        class="hidden absolute right-0 mt-2 w-64 bg-[#0b0b0f] border border-[#24242d] rounded-2xl p-2 shadow-2xl z-50"
+      >
+        <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+          Modo de Operação
+        </div>
+        <div class="flex flex-col gap-1 mt-1">
+          <button
+            id="btn-mode-both"
+            type="button"
+            onclick="selectModeFromMenu('both')"
+            class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors bg-[#2b3453] text-white flex items-center justify-between"
+          >
+            <div>
+              <div>Ambos (Auto + Manual)</div>
+              <div class="text-[10px] text-zinc-300/80 font-normal mt-0.5">Botão = e painel das 13 regras</div>
+            </div>
+            <span class="mode-check text-emerald-400 font-bold">✓</span>
+          </button>
+
+          <button
+            id="btn-mode-auto"
+            type="button"
+            onclick="selectModeFromMenu('auto')"
+            class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-zinc-300 hover:bg-[#15151d] flex items-center justify-between"
+          >
+            <div>
+              <div>Modo Automático</div>
+              <div class="text-[10px] text-zinc-500 font-normal mt-0.5">Foco na resolução rápida pelo =</div>
+            </div>
+            <span class="mode-check hidden text-emerald-400 font-bold">✓</span>
+          </button>
+
+          <button
+            id="btn-mode-manual"
+            type="button"
+            onclick="selectModeFromMenu('manual')"
+            class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-zinc-300 hover:bg-[#15151d] flex items-center justify-between"
+          >
+            <div>
+              <div>Modo Interativo</div>
+              <div class="text-[10px] text-zinc-500 font-normal mt-0.5">Aplicação manual passo a passo</div>
+            </div>
+            <span class="mode-check hidden text-emerald-400 font-bold">✓</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal em Duas Colunas (Teclado/Visor à Esquerda, Resultado & 13 Regras à Direita) -->
+  <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- COLUNA ESQUERDA: Modelo do Teclado + Premissas + Presets (6 colunas no desktop) -->
+    <section class="lg:col-span-6 flex flex-col gap-4">
+      
+      <!-- Título do bloco igual à referência -->
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-bold text-white tracking-wide">Modelo do teclado</h2>
+        <span class="text-[11px] font-mono text-zinc-500 bg-[#0d0d11] border border-[#222] px-2.5 py-1 rounded-full">
+          Precedência: ¬ &gt; ∧ &gt; ∨ &gt; → &gt; ↔
+        </span>
+      </div>
+
+      <!-- Card do Teclado (Fiel à imagem de referência) -->
+      <div class="bg-[#060608] border border-[#222226] rounded-2xl p-5 sm:p-6 shadow-2xl">
+        
+        <!-- Visor EXPRESSÃO -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="formula-input" class="text-[11px] font-semibold tracking-widest uppercase text-zinc-400">
+              EXPRESSÃO
+            </label>
+            <div class="flex items-center gap-2">
+              <button onclick="addPremiseFromInput()" title="Adicionar fórmula atual à lista de premissas" class="text-[11px] font-medium px-2.5 py-1 rounded-md bg-[#16161d] hover:bg-[#22222d] text-zinc-300 border border-[#2a2a35] transition-colors">
+                + Premissa ( , )
+              </button>
+              <button onclick="undoAction()" id="btn-undo" disabled title="Desfazer última alteração" class="text-[11px] font-medium px-2.5 py-1 rounded-md bg-[#16161d] hover:bg-[#22222d] disabled:opacity-40 text-zinc-300 border border-[#2a2a35] transition-colors">
+                ↶ Desfazer
+              </button>
+            </div>
+          </div>
+
+          <!-- Campo editável estilizado como visor limpo -->
+          <div class="relative flex items-center">
+            <input
+              id="formula-input"
+              type="text"
+              value="P → Q ∧ ¬R"
+              placeholder="Ex: P → Q, P ou ¬(P ∧ Q)"
+              autocomplete="off"
+              spellcheck="false"
+              class="w-full bg-transparent text-white font-mono text-2xl sm:text-3xl font-medium tracking-wide py-2 px-1 border-b border-transparent focus:border-[#2b3453] focus:outline-none placeholder:text-zinc-700"
+            />
+          </div>
+
+          <!-- Lista visual de Premissas separadas por vírgula (se houver múltiplas) -->
+          <div id="premises-chips" class="flex flex-wrap items-center gap-1.5 mt-2 min-h-[24px]"></div>
+        </div>
+
+        <!-- GRADE DE 4 COLUNAS EXATA CONFORME IMAGEM -->
+        <div class="grid grid-cols-4 gap-3 sm:gap-3.5 select-none">
+          
+          <!-- Linha 1: P, Q, R, S (botões limpos) -->
+          <button type="button" onclick="insertToken('P')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-semibold text-lg flex items-center justify-center">
+            P
+          </button>
+          <button type="button" onclick="insertToken('Q')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-semibold text-lg flex items-center justify-center">
+            Q
+          </button>
+          <button type="button" onclick="insertToken('R')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-semibold text-lg flex items-center justify-center">
+            R
+          </button>
+          <button type="button" onclick="insertToken('S')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-semibold text-lg flex items-center justify-center">
+            S
+          </button>
+
+          <!-- Linha 2: ¬, ∧, ∨, → (botões azul-ardósia arredondados #2b3453) -->
+          <button type="button" onclick="insertToken('¬')" class="calc-key h-14 rounded-xl bg-[#2b3453] hover:bg-[#364166] text-white font-mono font-semibold text-xl flex items-center justify-center shadow-sm">
+            ¬
+          </button>
+          <button type="button" onclick="insertToken('∧')" class="calc-key h-14 rounded-xl bg-[#2b3453] hover:bg-[#364166] text-white font-mono font-semibold text-xl flex items-center justify-center shadow-sm">
+            ∧
+          </button>
+          <button type="button" onclick="insertToken('∨')" class="calc-key h-14 rounded-xl bg-[#2b3453] hover:bg-[#364166] text-white font-mono font-semibold text-xl flex items-center justify-center shadow-sm">
+            ∨
+          </button>
+          <button type="button" onclick="insertToken('→')" class="calc-key h-14 rounded-xl bg-[#2b3453] hover:bg-[#364166] text-white font-mono font-semibold text-xl flex items-center justify-center shadow-sm">
+            →
+          </button>
+
+          <!-- Linha 3: ↔ (azul-ardósia), (, ), ⌫ (backspace) -->
+          <button type="button" onclick="insertToken('↔')" class="calc-key h-14 rounded-xl bg-[#2b3453] hover:bg-[#364166] text-white font-mono font-semibold text-xl flex items-center justify-center shadow-sm">
+            ↔
+          </button>
+          <button type="button" onclick="insertToken('(')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-mono font-semibold text-xl flex items-center justify-center">
+            (
+          </button>
+          <button type="button" onclick="insertToken(')')" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-mono font-semibold text-xl flex items-center justify-center">
+            )
+          </button>
+          <button type="button" onclick="backspaceToken()" aria-label="Apagar último caractere" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white flex items-center justify-center">
+            <!-- Ícone Backspace fiel ao desenho -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+              <line x1="18" y1="9" x2="12" y2="15"></line>
+              <line x1="12" y1="9" x2="18" y2="15"></line>
+            </svg>
+          </button>
+
+          <!-- Linha 4: ⊤, ⊥, C, = (botão verde #386351) -->
+          <button type="button" onclick="insertToken('⊤')" title="Verdadeiro (Tautologia)" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-mono font-semibold text-xl flex items-center justify-center">
+            ⊤
+          </button>
+          <button type="button" onclick="insertToken('⊥')" title="Falso (Contradição)" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-mono font-semibold text-xl flex items-center justify-center">
+            ⊥
+          </button>
+          <button type="button" onclick="clearInput()" title="Limpar expressão" class="calc-key h-14 rounded-xl bg-transparent hover:bg-[#141419] active:bg-[#1c1c24] text-white font-semibold text-lg flex items-center justify-center">
+            C
+          </button>
+          <button type="button" onclick="solveAuto()" title="Resolver / Calcular Resultado Final" class="calc-key h-14 rounded-xl bg-[#386351] hover:bg-[#437560] text-white font-mono font-bold text-2xl flex items-center justify-center shadow-md">
+            =
+          </button>
+        </div>
+
+        <!-- Rodapé sutil do teclado -->
+        <div class="mt-5 pt-3 border-t border-[#15151a] flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+          <span>Dica: Digite no teclado físico (<code class="text-zinc-400">~, &, |, ->, <->, ,</code>) ou use os botões.</span>
+          <div class="flex items-center gap-1.5">
+            <span>Vars extras:</span>
+            <button onclick="insertToken('A')" class="px-1.5 py-0.5 rounded bg-[#14141a] hover:bg-[#22222c] text-zinc-300 font-mono">A</button>
+            <button onclick="insertToken('B')" class="px-1.5 py-0.5 rounded bg-[#14141a] hover:bg-[#22222c] text-zinc-300 font-mono">B</button>
+            <button onclick="insertToken('C')" class="px-1.5 py-0.5 rounded bg-[#14141a] hover:bg-[#22222c] text-zinc-300 font-mono">C</button>
+            <button onclick="insertToken(',')" class="px-1.5 py-0.5 rounded bg-[#14141a] hover:bg-[#22222c] text-zinc-300 font-mono">,</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exemplos Rápidos (Dropdown) -->
+      <div class="relative" id="presets-menu-container">
+        <button
+          id="btn-presets-dropdown"
+          type="button"
+          onclick="togglePresetsMenu(event)"
+          aria-expanded="false"
+          class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#060608] hover:bg-[#0d0d12] border border-[#222226] hover:border-[#2b3453] text-left transition-colors shadow-sm"
+        >
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-[#2b3453]"></span>
+            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Exemplos Rápidos</span>
+            <span class="text-[11px] text-zinc-500 hidden sm:inline">(Clique para testar)</span>
+          </div>
+          <svg id="icon-presets-chevron" class="w-4 h-4 text-zinc-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <div
+          id="presets-dropdown"
+          class="hidden absolute left-0 right-0 mt-2 bg-[#0b0b0f] border border-[#24242d] rounded-2xl p-2 shadow-2xl z-40 max-h-72 overflow-y-auto"
+        >
+          <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            Selecione um exemplo pronto
+          </div>
+          <div class="flex flex-col gap-1 mt-1">
+            <button type="button" onclick="selectPresetFromDropdown('P → Q, P', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P → Q, P</span>
+              <span class="text-[11px] text-zinc-400">Modus Ponens</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('P → Q, ¬Q', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P → Q, ¬Q</span>
+              <span class="text-[11px] text-zinc-400">Modus Tollens</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('P → Q, Q → R', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P → Q, Q → R</span>
+              <span class="text-[11px] text-zinc-400">Silogismo Hipotético</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('P ∨ Q, ¬P', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P ∨ Q, ¬P</span>
+              <span class="text-[11px] text-zinc-400">Silogismo Disjuntivo</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('¬(P ∧ Q)', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">¬(P ∧ Q)</span>
+              <span class="text-[11px] text-zinc-400">Leis de De Morgan</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('P ↔ Q', 'manual')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P ↔ Q</span>
+              <span class="text-[11px] text-zinc-400">Bicondicional</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('¬¬(P → Q)', 'auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">¬¬(P → Q)</span>
+              <span class="text-[11px] text-zinc-400">Dupla Negação</span>
+            </button>
+            <button type="button" onclick="selectPresetFromDropdown('P ∧ (Q ∨ R)', 'manual')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#15151d] flex items-center justify-between gap-2 transition-colors">
+              <span class="text-xs font-mono text-white">P ∧ (Q ∨ R)</span>
+              <span class="text-[11px] text-zinc-400">Propriedade Distributiva</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUNA DIREITA: Resultado Final + Painel das 13 Regras e Propriedades (6 colunas no desktop) -->
+    <section class="lg:col-span-6 flex flex-col gap-5">
+
+      <!-- PAINEL DE EXIBIÇÃO: RESULTADO FINAL -->
+      <div id="result-panel" class="bg-[#060608] border border-[#222226] rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#386351]"></span>
+            <span class="text-[11px] font-semibold tracking-widest uppercase text-zinc-400">RESULTADO FINAL</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="useResultAsInput()" id="btn-use-result" class="hidden text-xs font-medium px-2.5 py-1 rounded-lg bg-[#2b3453] hover:bg-[#364166] text-white transition-colors">
+              ↑ Usar como Entrada
+            </button>
+            <button onclick="copyResult()" id="btn-copy-result" class="hidden text-xs font-medium px-2.5 py-1 rounded-lg bg-[#14141a] hover:bg-[#20202a] text-zinc-300 border border-[#282832] transition-colors">
+              Copiar
+            </button>
+          </div>
+        </div>
+
+        <!-- Caixa Principal do Resultado Final -->
+        <div id="final-output-box" class="min-h-[84px] flex flex-col justify-center bg-[#0b0b0f] border border-[#1d1d24] rounded-xl px-4 py-3.5">
+          <div id="final-expression" class="font-mono text-xl sm:text-2xl font-semibold text-emerald-400 break-words">
+            P → (Q ∧ ¬R)
+          </div>
+          <!-- Etiquetas de Classificação Explícita (Regra de Inferência vs Propriedade de Equivalência) -->
+          <div id="final-classification-badges" class="flex flex-wrap items-center gap-2 mt-2"></div>
+          <div id="final-rule-summary" class="text-xs text-zinc-400 mt-1.5">
+            Pressione <strong class="text-white">=</strong> para resolver automaticamente ou selecione uma das 13 regras abaixo.
+          </div>
+        </div>
+
+        <!-- Alerta / Mensagem de feedback (sem usar alert()) -->
+        <div id="feedback-toast" class="hidden mt-3 px-3.5 py-2.5 rounded-xl text-xs font-medium border"></div>
+
+        <!-- Detalhes colapsáveis (Discreto para manter Exibição: Final limpa) -->
+        <details id="steps-details" class="mt-3 group">
+          <summary class="text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer select-none list-none flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            <span>Ver detalhes / transformações aplicadas (<span id="steps-count">0</span>)</span>
+          </summary>
+          <ol id="steps-list" class="mt-2.5 space-y-1.5 text-xs font-mono text-zinc-300 bg-[#0a0a0d] border border-[#191920] rounded-xl p-3 max-h-44 overflow-y-auto">
+            <li class="text-zinc-500 font-sans">Nenhuma transformação executada ainda.</li>
+          </ol>
+        </details>
+      </div>
+
+      <!-- PAINEL INTERATIVO DAS 13 REGRAS E PROPRIEDADES -->
+      <!-- <div id="rules-section" class="bg-[#060608] border border-[#222226] rounded-2xl p-5 sm:p-6 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-white">13 Regras de Inferência e Propriedades</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Clique em uma regra para aplicá-la diretamente sobre a expressão/premissas atuais</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          
+          <button onclick="applyManualRule('modus_ponens')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">1. Modus Ponens</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MP</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, A ⊢ B</div>
+          </button>
+
+          <button onclick="applyManualRule('modus_tollens')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">2. Modus Tollens</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MT</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, ¬B ⊢ ¬A</div>
+          </button>
+
+          <button onclick="applyManualRule('silogismo_hipotetico')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">3. Silogismo Hipotético</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SH</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, B → C ⊢ A → C</div>
+          </button>
+
+          <button onclick="applyManualRule('silogismo_disjuntivo')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">4. Silogismo Disjuntivo</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SD</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∨ B, ¬A ⊢ B</div>
+          </button>
+
+          <button onclick="applyManualRule('eliminacao_conjuncao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">5. Eliminação da Conjunção</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">EC</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ⊢ A e B</div>
+          </button>
+
+          <button onclick="applyManualRule('comutativa')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">6. Propriedade Comutativa</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">COM</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ≡ B ∧ A ; A ∨ B ≡ B ∨ A</div>
+          </button>
+
+          <button onclick="applyManualRule('associativa')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">7. Propriedade Associativa</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">ASS</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">(A ∧ B) ∧ C ≡ A ∧ (B ∧ C)</div>
+          </button>
+
+          <button onclick="applyManualRule('distributiva')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">8. Propriedade Distributiva</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DIST</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ (B ∨ C) ≡ (A ∧ B) ∨ (A ∧ C)</div>
+          </button>
+
+          <button onclick="applyManualRule('de_morgan')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">9. Leis de De Morgan</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DM</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">¬(A ∧ B) ≡ ¬A ∨ ¬B</div>
+          </button>
+
+          <button onclick="applyManualRule('dupla_negacao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">10. Dupla Negação</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DN</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">¬¬A ≡ A</div>
+          </button>
+
+          <button onclick="applyManualRule('contraposicao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">11. Contraposição</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">CONT</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬B → ¬A</div>
+          </button>
+
+          <button onclick="applyManualRule('bicondicional')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">12. Bicondicional</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">BIC</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ↔ B ≡ (A → B) ∧ (B → A)</div>
+          </button>
+
+          <button onclick="applyManualRule('definicao_implicacao')" class="rule-card sm:col-span-2 text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">13. Definição da Implicação</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">IMP</span>
+            </div>
+            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬A ∨ B</div>
+          </button>
+
+        </div>
+      </div> -->
+
+    </section>
+  </main>
+
+  <!-- SCRIPT DO MOTOR DE LÓGICA PROPOSICIONAL (AST + PARSER + 13 REGRAS) -->
+  <script>
+    /**
+     * =========================================================================
+     * 1. TOKENIZER E PARSER AST (Precedência: ¬ > ∧ > ∨ > → > ↔)
+     * =========================================================================
+     */
+    const PRECEDENCE = {
+      'IFF': 1,   // ↔
+      'IMP': 2,   // →
+      'OR':  3,   // ∨
+      'AND': 4,   // ∧
+      'NOT': 5,   // ¬
+      'ATOM': 6,
+      'CONST': 6
+    };
+
+    // Normaliza símbolos digitados pelo teclado físico para os símbolos lógicos padrão
+    function normalizeSymbols(str) {
+      return str
+        .replace(/<->|↔/g, '↔')
+        .replace(/->|→|⇒/g, '→')
+        .replace(/~|!|-|¬/g, '¬')
+        .replace(/&&|&|\^|\*|∧/g, '∧')
+        .replace(/\|\||\||\+|∨/g, '∨')
+        .replace(/\bTRUE\b|\bVERDADEIRO\b|1/gi, '⊤')
+        .replace(/\bFALSE\b|\bFALSO\b|0/gi, '⊥');
+    }
+
+    function tokenize(input) {
+      const tokens = [];
+      let i = 0;
+      while (i < input.length) {
+        const ch = input[i];
+        if (/\s/.test(ch)) {
+          i++;
+          continue;
+        }
+        if (ch === '(') { tokens.push({ type: 'LPAREN', value: '(' }); i++; continue; }
+        if (ch === ')') { tokens.push({ type: 'RPAREN', value: ')' }); i++; continue; }
+        if (ch === '¬') { tokens.push({ type: 'NOT', value: '¬' }); i++; continue; }
+        if (ch === '∧') { tokens.push({ type: 'AND', value: '∧' }); i++; continue; }
+        if (ch === '∨') { tokens.push({ type: 'OR', value: '∨' }); i++; continue; }
+        if (ch === '→') { tokens.push({ type: 'IMP', value: '→' }); i++; continue; }
+        if (ch === '↔') { tokens.push({ type: 'IFF', value: '↔' }); i++; continue; }
+        if (ch === '⊤') { tokens.push({ type: 'CONST', value: true }); i++; continue; }
+        if (ch === '⊥') { tokens.push({ type: 'CONST', value: false }); i++; continue; }
+        if (/[A-Za-z]/.test(ch)) {
+          tokens.push({ type: 'ATOM', value: ch.toUpperCase() });
+          i++;
+          continue;
+        }
+        throw new Error(`Símbolo inválido encontrado: "${ch}"`);
+      }
+      return tokens;
+    }
+
+    // Recursive Descent Parser com precedência estrita: ¬ > ∧ > ∨ > → > ↔
+    function parseFormula(rawStr) {
+      const normalized = normalizeSymbols(rawStr).trim();
+      if (!normalized) throw new Error("A expressão está vazia.");
+      const tokens = tokenize(normalized);
+      let pos = 0;
+
+      function peek() { return tokens[pos]; }
+      function consume(expectedType) {
+        const tok = tokens[pos];
+        if (!tok || (expectedType && tok.type !== expectedType)) {
+          throw new Error(`Erro de sintaxe próximo a "${tok ? tok.value : 'fim da expressão'}"`);
+        }
+        pos++;
+        return tok;
+      }
+
+      // ↔ (associativo à direita)
+      function parseIff() {
+        let left = parseImp();
+        while (peek() && peek().type === 'IFF') {
+          consume('IFF');
+          const right = parseIff();
+          left = { type: 'IFF', left, right };
+        }
+        return left;
+      }
+
+      // → (associativo à direita)
+      function parseImp() {
+        let left = parseOr();
+        while (peek() && peek().type === 'IMP') {
+          consume('IMP');
+          const right = parseImp();
+          left = { type: 'IMP', left, right };
+        }
+        return left;
+      }
+
+      // ∨ (associativo à esquerda)
+      function parseOr() {
+        let left = parseAnd();
+        while (peek() && peek().type === 'OR') {
+          consume('OR');
+          const right = parseAnd();
+          left = { type: 'OR', left, right };
+        }
+        return left;
+      }
+
+      // ∧ (associativo à esquerda)
+      function parseAnd() {
+        let left = parseNot();
+        while (peek() && peek().type === 'AND') {
+          consume('AND');
+          const right = parseNot();
+          left = { type: 'AND', left, right };
+        }
+        return left;
+      }
+
+      // ¬ (unário prefixo)
+      function parseNot() {
+        if (peek() && peek().type === 'NOT') {
+          consume('NOT');
+          return { type: 'NOT', operand: parseNot() };
+        }
+        return parsePrimary();
+      }
+
+      // Átomos, constantes e parênteses
+      function parsePrimary() {
+        const tok = peek();
+        if (!tok) throw new Error("Expressão incompleta.");
+        if (tok.type === 'LPAREN') {
+          consume('LPAREN');
+          const expr = parseIff();
+          consume('RPAREN');
+          return expr;
+        }
+        if (tok.type === 'ATOM') {
+          consume('ATOM');
+          return { type: 'ATOM', name: tok.value };
+        }
+        if (tok.type === 'CONST') {
+          consume('CONST');
+          return { type: 'CONST', value: tok.value };
+        }
+        throw new Error(`Token inesperado: "${tok.value}"`);
+      }
+
+      const ast = parseIff();
+      if (pos < tokens.length) {
+        throw new Error(`Token extra inesperado: "${tokens[pos].value}"`);
+      }
+      return ast;
+    }
+
+    // Formata AST de volta para string limpa respeitando precedência
+    function formatAST(node, parentPrec = 0, isRightChild = false) {
+      if (!node) return '';
+      if (node.type === 'ATOM') return node.name;
+      if (node.type === 'CONST') return node.value ? '⊤' : '⊥';
+
+      const myPrec = PRECEDENCE[node.type];
+      if (node.type === 'NOT') {
+        const inner = formatAST(node.operand, myPrec, false);
+        const needParens = node.operand.type !== 'ATOM' && node.operand.type !== 'CONST' && node.operand.type !== 'NOT';
+        return `¬${needParens ? `(${inner})` : inner}`;
+      }
+
+      const symMap = { AND: '∧', OR: '∨', IMP: '→', IFF: '↔' };
+      const sym = symMap[node.type];
+
+      const leftStr = formatAST(node.left, myPrec, false);
+      const rightStr = formatAST(node.right, myPrec, true);
+
+      const str = `${leftStr} ${sym} ${rightStr}`;
+      // Coloca parênteses se precedência for menor que o pai, ou em encadeamento ambíguo
+      if (myPrec < parentPrec || (myPrec === parentPrec && isRightChild && (node.type === 'AND' || node.type === 'OR'))) {
+        return `(${str})`;
+      }
+      return str;
+    }
+
+    // Comparação estrutural profunda entre duas ASTs
+    function astEquals(a, b) {
+      if (!a || !b || a.type !== b.type) return false;
+      if (a.type === 'ATOM') return a.name === b.name;
+      if (a.type === 'CONST') return a.value === b.value;
+      if (a.type === 'NOT') return astEquals(a.operand, b.operand);
+      return astEquals(a.left, b.left) && astEquals(a.right, b.right);
+    }
+
+    function cloneAST(node) {
+      return JSON.parse(JSON.stringify(node));
+    }
+
+    // Verifica se 'sub' é a negação lógica de 'target' (ex: ¬P e P, ou P e ¬P)
+    function isNegationOf(a, b) {
+      if (a.type === 'NOT' && astEquals(a.operand, b)) return true;
+      if (b.type === 'NOT' && astEquals(b.operand, a)) return true;
+      return false;
+    }
+
+    /**
+     * =========================================================================
+     * 2. IMPLEMENTAÇÃO DAS 13 REGRAS DE INFERÊNCIA E EQUIVALÊNCIAS
+     * =========================================================================
+     */
+
+    // Transformação recursiva na árvore para equivalências (aplica 1 transformação por vez)
+    function transformOnce(node, transformerFn) {
+      const direct = transformerFn(node);
+      if (direct) return { node: direct, applied: true };
+
+      if (node.type === 'NOT') {
+        const res = transformOnce(node.operand, transformerFn);
+        if (res.applied) return { node: { type: 'NOT', operand: res.node }, applied: true };
+      } else if (node.left && node.right) {
+        const resL = transformOnce(node.left, transformerFn);
+        if (resL.applied) return { node: { ...node, left: resL.node }, applied: true };
+        const resR = transformOnce(node.right, transformerFn);
+        if (resR.applied) return { node: { ...node, right: resR.node }, applied: true };
+      }
+      return { node, applied: false };
+    }
+
+    // 1. Modus Ponens: A → B, A ⊢ B
+    function ruleModusPonens(premises) {
+      for (let i = 0; i < premises.length; i++) {
+        const p1 = premises[i];
+        if (p1.type === 'IMP') {
+          for (let j = 0; j < premises.length; j++) {
+            if (i === j) continue;
+            if (astEquals(p1.left, premises[j])) {
+              return {
+                results: [cloneAST(p1.right)],
+                desc: `Modus Ponens aplicado em (${formatAST(p1)}) e (${formatAST(premises[j])}) ⊢ ${formatAST(p1.right)}`
+              };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // 2. Modus Tollens: A → B, ¬B ⊢ ¬A
+    function ruleModusTollens(premises) {
+      for (let i = 0; i < premises.length; i++) {
+        const p1 = premises[i];
+        if (p1.type === 'IMP') {
+          for (let j = 0; j < premises.length; j++) {
+            if (i === j) continue;
+            if (isNegationOf(p1.right, premises[j])) {
+              const conclusion = p1.left.type === 'NOT'
+                ? cloneAST(p1.left.operand)
+                : { type: 'NOT', operand: cloneAST(p1.left) };
+              return {
+                results: [conclusion],
+                desc: `Modus Tollens aplicado em (${formatAST(p1)}) e (${formatAST(premises[j])}) ⊢ ${formatAST(conclusion)}`
+              };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // 3. Silogismo Hipotético: A → B, B → C ⊢ A → C
+    function ruleSilogismoHipotetico(premises) {
+      for (let i = 0; i < premises.length; i++) {
+        const p1 = premises[i];
+        if (p1.type === 'IMP') {
+          for (let j = 0; j < premises.length; j++) {
+            if (i === j) continue;
+            const p2 = premises[j];
+            if (p2.type === 'IMP' && astEquals(p1.right, p2.left)) {
+              const conclusion = {
+                type: 'IMP',
+                left: cloneAST(p1.left),
+                right: cloneAST(p2.right)
+              };
+              return {
+                results: [conclusion],
+                desc: `Silogismo Hipotético aplicado em (${formatAST(p1)}) e (${formatAST(p2)}) ⊢ ${formatAST(conclusion)}`
+              };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // 4. Silogismo Disjuntivo: A ∨ B, ¬A ⊢ B (e simétrico A ∨ B, ¬B ⊢ A)
+    function ruleSilogismoDisjuntivo(premises) {
+      for (let i = 0; i < premises.length; i++) {
+        const p1 = premises[i];
+        if (p1.type === 'OR') {
+          for (let j = 0; j < premises.length; j++) {
+            if (i === j) continue;
+            const p2 = premises[j];
+            if (isNegationOf(p1.left, p2)) {
+              return {
+                results: [cloneAST(p1.right)],
+                desc: `Silogismo Disjuntivo aplicado em (${formatAST(p1)}) e (${formatAST(p2)}) ⊢ ${formatAST(p1.right)}`
+              };
+            }
+            if (isNegationOf(p1.right, p2)) {
+              return {
+                results: [cloneAST(p1.left)],
+                desc: `Silogismo Disjuntivo aplicado em (${formatAST(p1)}) e (${formatAST(p2)}) ⊢ ${formatAST(p1.left)}`
+              };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // 5. Eliminação da Conjunção: A ∧ B ⊢ A, B
+    function ruleEliminacaoConjuncao(premises) {
+      for (let i = 0; i < premises.length; i++) {
+        const p = premises[i];
+        if (p.type === 'AND') {
+          const left = cloneAST(p.left);
+          const right = cloneAST(p.right);
+          return {
+            results: [left, right],
+            desc: `Eliminação da Conjunção em (${formatAST(p)}) ⊢ ${formatAST(left)} e ${formatAST(right)}`
+          };
+        }
+      }
+      return null;
+    }
+
+    // Transformadores das 8 Propriedades de Equivalência
+    const EQUIVALENCE_TRANSFORMERS = {
+      // 6. Propriedade Comutativa: A ∧ B ≡ B ∧ A ; A ∨ B ≡ B ∨ A
+      comutativa(node) {
+        if (node.type === 'AND' || node.type === 'OR') {
+          return { type: node.type, left: cloneAST(node.right), right: cloneAST(node.left) };
+        }
+        return null;
+      },
+
+      // 7. Propriedade Associativa: (A ∧ B) ∧ C ≡ A ∧ (B ∧ C) ou vice-versa
+      associativa(node) {
+        if (node.type === 'AND' || node.type === 'OR') {
+          const op = node.type;
+          if (node.left.type === op) {
+            return {
+              type: op,
+              left: cloneAST(node.left.left),
+              right: { type: op, left: cloneAST(node.left.right), right: cloneAST(node.right) }
+            };
+          }
+          if (node.right.type === op) {
+            return {
+              type: op,
+              left: { type: op, left: cloneAST(node.left), right: cloneAST(node.right.left) },
+              right: cloneAST(node.right.right)
+            };
+          }
+        }
+        return null;
+      },
+
+      // 8. Propriedade Distributiva: A ∧ (B ∨ C) ≡ (A ∧ B) ∨ (A ∧ C) e dual + fatoração reversa
+      distributiva(node) {
+        if (node.type === 'AND' && node.right.type === 'OR') {
+          return {
+            type: 'OR',
+            left: { type: 'AND', left: cloneAST(node.left), right: cloneAST(node.right.left) },
+            right: { type: 'AND', left: cloneAST(node.left), right: cloneAST(node.right.right) }
+          };
+        }
+        if (node.type === 'AND' && node.left.type === 'OR') {
+          return {
+            type: 'OR',
+            left: { type: 'AND', left: cloneAST(node.left.left), right: cloneAST(node.right) },
+            right: { type: 'AND', left: cloneAST(node.left.right), right: cloneAST(node.right) }
+          };
+        }
+        if (node.type === 'OR' && node.right.type === 'AND') {
+          return {
+            type: 'AND',
+            left: { type: 'OR', left: cloneAST(node.left), right: cloneAST(node.right.left) },
+            right: { type: 'OR', left: cloneAST(node.left), right: cloneAST(node.right.right) }
+          };
+        }
+        if (node.type === 'OR' && node.left.type === 'AND') {
+          return {
+            type: 'AND',
+            left: { type: 'OR', left: cloneAST(node.left.left), right: cloneAST(node.right) },
+            right: { type: 'OR', left: cloneAST(node.left.right), right: cloneAST(node.right) }
+          };
+        }
+        // Fatoração reversa: (A ∧ B) ∨ (A ∧ C) ≡ A ∧ (B ∨ C)
+        if ((node.type === 'OR' && node.left.type === 'AND' && node.right.type === 'AND') ||
+            (node.type === 'AND' && node.left.type === 'OR' && node.right.type === 'OR')) {
+          const innerOp = node.left.type;
+          if (astEquals(node.left.left, node.right.left)) {
+            return {
+              type: innerOp,
+              left: cloneAST(node.left.left),
+              right: { type: node.type, left: cloneAST(node.left.right), right: cloneAST(node.right.right) }
+            };
+          }
+        }
+        return null;
+      },
+
+      // 9. Leis de De Morgan: ¬(A ∧ B) ≡ ¬A ∨ ¬B ; ¬(A ∨ B) ≡ ¬A ∧ ¬B
+      de_morgan(node) {
+        if (node.type === 'NOT' && (node.operand.type === 'AND' || node.operand.type === 'OR')) {
+          const newOp = node.operand.type === 'AND' ? 'OR' : 'AND';
+          return {
+            type: newOp,
+            left: { type: 'NOT', operand: cloneAST(node.operand.left) },
+            right: { type: 'NOT', operand: cloneAST(node.operand.right) }
+          };
+        }
+        return null;
+      },
+
+      // 10. Dupla Negação: ¬¬A ≡ A
+      dupla_negacao(node) {
+        if (node.type === 'NOT' && node.operand.type === 'NOT') {
+          return cloneAST(node.operand.operand);
+        }
+        return null;
+      },
+
+      // 11. Contraposição: A → B ≡ ¬B → ¬A
+      contraposicao(node) {
+        if (node.type === 'IMP') {
+          const negB = node.right.type === 'NOT'
+            ? cloneAST(node.right.operand)
+            : { type: 'NOT', operand: cloneAST(node.right) };
+          const negA = node.left.type === 'NOT'
+            ? cloneAST(node.left.operand)
+            : { type: 'NOT', operand: cloneAST(node.left) };
+          return { type: 'IMP', left: negB, right: negA };
+        }
+        return null;
+      },
+
+      // 12. Bicondicional: A ↔ B ≡ (A → B) ∧ (B → A)
+      bicondicional(node) {
+        if (node.type === 'IFF') {
+          return {
+            type: 'AND',
+            left: { type: 'IMP', left: cloneAST(node.left), right: cloneAST(node.right) },
+            right: { type: 'IMP', left: cloneAST(node.right), right: cloneAST(node.left) }
+          };
+        }
+        return null;
+      },
+
+      // 13. Definição da Implicação: A → B ≡ ¬A ∨ B
+      definicao_implicacao(node) {
+        if (node.type === 'IMP') {
+          const negA = node.left.type === 'NOT'
+            ? cloneAST(node.left.operand)
+            : { type: 'NOT', operand: cloneAST(node.left) };
+          return { type: 'OR', left: negA, right: cloneAST(node.right) };
+        }
+        return null;
+      }
+    };
+
+    const RULE_LABELS = {
+      modus_ponens: 'Modus Ponens',
+      modus_tollens: 'Modus Tollens',
+      silogismo_hipotetico: 'Silogismo Hipotético',
+      silogismo_disjuntivo: 'Silogismo Disjuntivo',
+      eliminacao_conjuncao: 'Eliminação da Conjunção',
+      comutativa: 'Propriedade Comutativa',
+      associativa: 'Propriedade Associativa',
+      distributiva: 'Propriedade Distributiva',
+      de_morgan: 'Leis de De Morgan',
+      dupla_negacao: 'Dupla Negação',
+      contraposicao: 'Contraposição',
+      bicondicional: 'Bicondicional',
+      definicao_implicacao: 'Definição da Implicação'
+    };
+
+    const RULE_CATEGORIES = {
+      modus_ponens: 'Regra de Inferência',
+      modus_tollens: 'Regra de Inferência',
+      silogismo_hipotetico: 'Regra de Inferência',
+      silogismo_disjuntivo: 'Regra de Inferência',
+      eliminacao_conjuncao: 'Regra de Inferência',
+      comutativa: 'Propriedade de Equivalência',
+      associativa: 'Propriedade de Equivalência',
+      distributiva: 'Propriedade de Equivalência',
+      de_morgan: 'Propriedade de Equivalência',
+      dupla_negacao: 'Propriedade de Equivalência',
+      contraposicao: 'Propriedade de Equivalência',
+      bicondicional: 'Propriedade de Equivalência',
+      definicao_implicacao: 'Propriedade de Equivalência'
+    };
+
+    // Detecta se uma fórmula Lado1 ↔ Lado2 corresponde a uma das 8 propriedades de equivalência
+    function detectEquivalenceIdentity(ast) {
+      if (!ast || ast.type !== 'IFF') return null;
+      const lhs = ast.left;
+      const rhs = ast.right;
+
+      const equivOrder = [
+        'comutativa',
+        'associativa',
+        'distributiva',
+        'de_morgan',
+        'dupla_negacao',
+        'contraposicao',
+        'bicondicional',
+        'definicao_implicacao'
+      ];
+
+      for (const key of equivOrder) {
+        const transformer = EQUIVALENCE_TRANSFORMERS[key];
+        const tLeft = transformOnce(lhs, transformer);
+        if (tLeft.applied && astEquals(tLeft.node, rhs)) {
+          return {
+            key,
+            name: RULE_LABELS[key],
+            category: RULE_CATEGORIES[key],
+            lhsStr: formatAST(lhs),
+            rhsStr: formatAST(rhs)
+          };
+        }
+        const tRight = transformOnce(rhs, transformer);
+        if (tRight.applied && astEquals(tRight.node, lhs)) {
+          return {
+            key,
+            name: RULE_LABELS[key],
+            category: RULE_CATEGORIES[key],
+            lhsStr: formatAST(lhs),
+            rhsStr: formatAST(rhs)
+          };
+        }
+      }
+      return null;
+    }
+
+    /**
+     * =========================================================================
+     * 3. CONTROLE DE INTERFACE, HISTÓRICO, TECLADO VIRTUAL E MODO BOTH
+     * =========================================================================
+     */
+    const inputEl = document.getElementById('formula-input');
+    const historyStack = [];
+    let currentMode = 'both';
+    let lastFinalResultStr = 'P → (Q ∧ ¬R)';
+
+    function pushHistory(val) {
+      if (historyStack[historyStack.length - 1] !== val) {
+        historyStack.push(val);
+        document.getElementById('btn-undo').disabled = false;
+      }
+    }
+
+    function undoAction() {
+      if (historyStack.length === 0) return;
+      const prev = historyStack.pop();
+      inputEl.value = prev;
+      updatePremisesChips();
+      document.getElementById('btn-undo').disabled = historyStack.length === 0;
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const btnBoth = document.getElementById('btn-mode-both');
+      const btnAuto = document.getElementById('btn-mode-auto');
+      const btnManual = document.getElementById('btn-mode-manual');
+      const rulesSection = document.getElementById('rules-section');
+      const modeBadge = document.getElementById('current-mode-badge');
+
+      const modeNames = {
+        both: 'Ambos (Auto + Manual)',
+        auto: 'Modo Automático',
+        manual: 'Modo Interativo'
+      };
+      if (modeBadge) modeBadge.textContent = modeNames[mode] || modeNames.both;
+
+      const items = [
+        { key: 'both', el: btnBoth },
+        { key: 'auto', el: btnAuto },
+        { key: 'manual', el: btnManual }
+      ];
+
+      items.forEach(({ key, el }) => {
+        const check = el.querySelector('.mode-check');
+        if (key === mode) {
+          el.className = 'w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors bg-[#2b3453] text-white flex items-center justify-between';
+          if (check) check.classList.remove('hidden');
+        } else {
+          el.className = 'w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-zinc-300 hover:bg-[#15151d] flex items-center justify-between';
+          if (check) check.classList.add('hidden');
+        }
+      });
+
+      if (mode === 'auto') {
+        rulesSection.classList.add('hidden');
+      } else {
+        rulesSection.classList.remove('hidden');
+      }
+    }
+
+    // Fecha o menu hambúrguer e o dropdown de exemplos ao clicar fora deles
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('mode-menu-container');
+      if (container && !container.contains(e.target)) {
+        closeModeMenu();
+      }
+      const presetsContainer = document.getElementById('presets-menu-container');
+      if (presetsContainer && !presetsContainer.contains(e.target)) {
+        closePresetsMenu();
+      }
+    });
+
+    function togglePresetsMenu(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('presets-dropdown');
+      const chevron = document.getElementById('icon-presets-chevron');
+      const btn = document.getElementById('btn-presets-dropdown');
+      const isHidden = dropdown.classList.contains('hidden');
+
+      if (isHidden) {
+        dropdown.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        closePresetsMenu();
+      }
+    }
+
+    function closePresetsMenu() {
+      const dropdown = document.getElementById('presets-dropdown');
+      const chevron = document.getElementById('icon-presets-chevron');
+      const btn = document.getElementById('btn-presets-dropdown');
+      if (!dropdown) return;
+      dropdown.classList.add('hidden');
+      chevron.classList.remove('rotate-180');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function selectPresetFromDropdown(expr, suggestedMode) {
+      closePresetsMenu();
+      loadPreset(expr, suggestedMode);
+    }
+
+    // =========================================================================
+    // CONTROLE DO TECLADO VIRTUAL, CHIPS DE PREMISSAS E TECLADO FÍSICO
+    // =========================================================================
+    function insertToken(token) {
+      pushHistory(inputEl.value);
+      const start = inputEl.selectionStart ?? inputEl.value.length;
+      const end = inputEl.selectionEnd ?? inputEl.value.length;
+      const before = inputEl.value.slice(0, start);
+      const after = inputEl.value.slice(end);
+
+      const binaryOps = ['∧', '∨', '→', '↔'];
+      let formattedToken = token;
+      if (binaryOps.includes(token)) {
+        const prefix = before.length > 0 && !/\s$/.test(before) ? ' ' : '';
+        const suffix = after.length === 0 || !/^\s/.test(after) ? ' ' : '';
+        formattedToken = `${prefix}${token}${suffix}`;
+      } else if (token === ',') {
+        formattedToken = ', ';
+      }
+
+      inputEl.value = before + formattedToken + after;
+      const newCursor = start + formattedToken.length;
+      inputEl.focus();
+      inputEl.setSelectionRange(newCursor, newCursor);
+      updatePremisesChips();
+    }
+
+    function backspaceToken() {
+      pushHistory(inputEl.value);
+      const start = inputEl.selectionStart ?? inputEl.value.length;
+      const end = inputEl.selectionEnd ?? inputEl.value.length;
+
+      if (start !== end) {
+        inputEl.value = inputEl.value.slice(0, start) + inputEl.value.slice(end);
+        inputEl.focus();
+        inputEl.setSelectionRange(start, start);
+      } else if (start > 0) {
+        const before = inputEl.value.slice(0, start);
+        const removeCount = /\s[∧∨→↔]\s$/.test(before) ? 3 : 1;
+        inputEl.value = before.slice(0, -removeCount) + inputEl.value.slice(start);
+        const newCursor = Math.max(0, start - removeCount);
+        inputEl.focus();
+        inputEl.setSelectionRange(newCursor, newCursor);
+      }
+      updatePremisesChips();
+    }
+
+    function clearInput() {
+      pushHistory(inputEl.value);
+      inputEl.value = '';
+      inputEl.focus();
+      updatePremisesChips();
+      hideToast();
+    }
+
+    function addPremiseFromInput() {
+      const current = inputEl.value.trim();
+      if (!current) return;
+      pushHistory(inputEl.value);
+      inputEl.value = current.endsWith(',') ? `${current} ` : `${current}, `;
+      inputEl.focus();
+      updatePremisesChips();
+    }
+
+    function updatePremisesChips() {
+      const container = document.getElementById('premises-chips');
+      if (!container) return;
+      const parts = inputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+      if (parts.length <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = parts.map((p, idx) => `
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#121218] border border-[#252530] text-zinc-300">
+          <span class="text-zinc-500">P${idx + 1}:</span>
+          <span>${p}</span>
+        </span>
+      `).join('');
+    }
+
+    inputEl.addEventListener('input', () => {
+      updatePremisesChips();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        solveAuto();
+      }
+    });
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('feedback-toast');
+      toast.classList.remove('hidden', 'bg-red-950/60', 'border-red-800/60', 'text-red-300', 'bg-emerald-950/60', 'border-emerald-800/60', 'text-emerald-300', 'bg-[#14141c]', 'border-[#282834]', 'text-zinc-300');
+      if (type === 'error') {
+        toast.classList.add('bg-red-950/60', 'border-red-800/60', 'text-red-300');
+      } else if (type === 'success') {
+        toast.classList.add('bg-emerald-950/60', 'border-emerald-800/60', 'text-emerald-300');
+      } else {
+        toast.classList.add('bg-[#14141c]', 'border-[#282834]', 'text-zinc-300');
+      }
+      toast.textContent = msg;
+    }
+
+    function hideToast() {
+      document.getElementById('feedback-toast').classList.add('hidden');
+    }
+
+    function renderResult(finalExpr, summaryHtml, stepsArray = [], appliedItems = []) {
+      lastFinalResultStr = finalExpr;
+      document.getElementById('final-expression').textContent = finalExpr;
+      document.getElementById('final-rule-summary').innerHTML = summaryHtml;
+
+      const badgesContainer = document.getElementById('final-classification-badges');
+      if (appliedItems && appliedItems.length > 0) {
+        badgesContainer.innerHTML = appliedItems.map(item => {
+          const isInference = item.category === 'Regra de Inferência';
+          const badgeStyle = isInference
+            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+            : 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60';
+          const dotStyle = isInference ? 'bg-emerald-400' : 'bg-indigo-400';
+          return `
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${badgeStyle}">
+              <span class="w-1.5 h-1.5 rounded-full ${dotStyle}"></span>
+              <span class="font-semibold">${item.category}:</span>
+              <span>${item.name}</span>
+            </span>
+          `;
+        }).join('');
+      } else {
+        badgesContainer.innerHTML = '';
+      }
+
+      document.getElementById('btn-use-result').classList.remove('hidden');
+      document.getElementById('btn-copy-result').classList.remove('hidden');
+
+      const stepsCount = document.getElementById('steps-count');
+      const stepsList = document.getElementById('steps-list');
+      stepsCount.textContent = stepsArray.length;
+      if (stepsArray.length === 0) {
+        stepsList.innerHTML = '<li class="text-zinc-500 font-sans">Nenhuma transformação intermediária necessária.</li>';
+      } else {
+        stepsList.innerHTML = stepsArray.map((s, idx) => `
+          <li class="flex items-start gap-2">
+            <span class="text-zinc-500 select-none">${idx + 1}.</span>
+            <span>${s}</span>
+          </li>
+        `).join('');
+      }
+    }
+
+    function parseAllPremises() {
+      const raw = inputEl.value.trim();
+      if (!raw) throw new Error("Digite ou monte uma expressão lógica primeiro.");
+      const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+      return parts.map(p => parseFormula(p));
+    }
+
+    // Verifica se a expressão tenta representar uma das equivalências, mas contém um erro de digitação/operador
+    function diagnoseNearMissEquivalence(ast) {
+      if (!ast || ast.type !== 'IFF') return null;
+      const lhs = ast.left;
+      const rhs = ast.right;
+
+      // Caso comum na Distributiva: A ∨ (B ∧ C) ↔ (A ∨ B) ∧ (A ∧ C) (erro de operador no 2º parêntese)
+      if ((lhs.type === 'OR' && lhs.right.type === 'AND') || (lhs.type === 'AND' && lhs.right.type === 'OR')) {
+        const expected = EQUIVALENCE_TRANSFORMERS.distributiva(lhs);
+        if (expected && rhs.type === expected.type && !astEquals(expected, rhs)) {
+          return {
+            name: RULE_LABELS.distributiva,
+            expectedStr: `${formatAST(lhs)} ↔ ${formatAST(expected)}`
+          };
+        }
+      }
+      if ((rhs.type === 'OR' && rhs.right.type === 'AND') || (rhs.type === 'AND' && rhs.right.type === 'OR')) {
+        const expected = EQUIVALENCE_TRANSFORMERS.distributiva(rhs);
+        if (expected && lhs.type === expected.type && !astEquals(expected, lhs)) {
+          return {
+            name: RULE_LABELS.distributiva,
+            expectedStr: `${formatAST(expected)} ↔ ${formatAST(rhs)}`
+          };
+        }
+      }
+      return null;
+    }
+
+    function solveAuto() {
+      hideToast();
+      try {
+        let premises = parseAllPremises();
+        const steps = [];
+        const appliedMap = new Map(); // key: ruleKey -> { name, category }
+
+        // Caso especial: o usuário digitou diretamente uma identidade de equivalência (ex: "A ∨ B ↔ B ∨ A")
+        if (premises.length === 1 && premises[0].type === 'IFF') {
+          const detectedEq = detectEquivalenceIdentity(premises[0]);
+          if (detectedEq) {
+            const fullExprStr = formatAST(premises[0]);
+            steps.push(`[${detectedEq.category}] ${detectedEq.name}: ${detectedEq.lhsStr} ≡ ${detectedEq.rhsStr}`);
+            const appliedItems = [{ name: detectedEq.name, category: detectedEq.category }];
+            renderResult(
+              `${fullExprStr} (⊤)`,
+              `Equivalência válida identificada: <strong class="text-white">${detectedEq.name}</strong> (${detectedEq.lhsStr} ≡ ${detectedEq.rhsStr}).`,
+              steps,
+              appliedItems
+            );
+            showToast(`${detectedEq.name} reconhecida automaticamente!`, 'success');
+            return;
+          }
+
+          // Verifica se é uma tentativa de equivalência com erro de operador (ex: Distributiva incorreta)
+          const nearMiss = diagnoseNearMissEquivalence(premises[0]);
+          if (nearMiss) {
+            const fullExprStr = formatAST(premises[0]);
+            steps.push(`Forma digitada: ${fullExprStr} (não equivalente)`);
+            steps.push(`Forma correta (${nearMiss.name}): ${nearMiss.expectedStr}`);
+            renderResult(
+              `${fullExprStr} (⊥)`,
+              `Atenção: Parece uma tentativa da <strong class="text-white">${nearMiss.name}</strong>, mas há um operador trocado. O correto é: <strong class="text-emerald-400 font-mono">${nearMiss.expectedStr}</strong>.`,
+              steps,
+              []
+            );
+            showToast(`Operador incorreto na ${nearMiss.name}! Verifique o lado direito.`, 'error');
+            return;
+          }
+        }
+
+        // Fase 1: Aplicar regras de inferência iterativamente enquanto houver novas deduções
+        let changed = true;
+        let guard = 0;
+        while (changed && guard < 20) {
+          changed = false;
+          guard++;
+          const inferenceRules = [
+            { key: 'modus_ponens', fn: ruleModusPonens },
+            { key: 'modus_tollens', fn: ruleModusTollens },
+            { key: 'silogismo_hipotetico', fn: ruleSilogismoHipotetico },
+            { key: 'silogismo_disjuntivo', fn: ruleSilogismoDisjuntivo },
+            { key: 'eliminacao_conjuncao', fn: ruleEliminacaoConjuncao }
+          ];
+
+          for (const { key, fn } of inferenceRules) {
+            const res = fn(premises);
+            if (res) {
+              for (const newAst of res.results) {
+                if (!premises.some(p => astEquals(p, newAst))) {
+                  premises.push(newAst);
+                  steps.push(res.desc);
+                  appliedMap.set(key, { name: RULE_LABELS[key], category: RULE_CATEGORIES[key] });
+                  changed = true;
+                }
+              }
+            }
+          }
+        }
+
+        // Fase 2: Simplificar equivalências automáticas seguras (Dupla Negação, De Morgan, Bicondicional, Def. Implicação)
+        const autoEquivKeys = ['dupla_negacao', 'de_morgan', 'bicondicional', 'definicao_implicacao'];
+        premises = premises.map(p => {
+          let curr = p;
+          let eqChanged = true;
+          let eqGuard = 0;
+          while (eqChanged && eqGuard < 15) {
+            eqChanged = false;
+            eqGuard++;
+            for (const key of autoEquivKeys) {
+              const t = transformOnce(curr, EQUIVALENCE_TRANSFORMERS[key]);
+              if (t.applied && !astEquals(t.node, curr)) {
+                steps.push(`${RULE_LABELS[key]}: ${formatAST(curr)} ≡ ${formatAST(t.node)}`);
+                appliedMap.set(key, { name: RULE_LABELS[key], category: RULE_CATEGORIES[key] });
+                curr = t.node;
+                eqChanged = true;
+              }
+            }
+          }
+          return curr;
+        });
+
+        // Se houve inferências novas, o resultado final destaca as conclusões derivadas
+        const originalCount = parseAllPremises().length;
+        const derived = premises.slice(originalCount);
+        const finalNodes = derived.length > 0 ? derived : premises;
+        const finalStr = finalNodes.map(n => formatAST(n)).join(', ');
+        const appliedItems = Array.from(appliedMap.values());
+
+        const summary = appliedItems.length > 0
+          ? `Resolvido com sucesso usando: <strong class="text-white">${appliedItems.map(i => i.name).join(', ')}</strong>.`
+          : `Expressão analisada e normalizada (nenhuma redução adicional necessária).`;
+
+        renderResult(finalStr, summary, steps, appliedItems);
+        showToast('Cálculo concluído com sucesso!', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Aplicação Manual / Interativa de qualquer uma das 13 regras
+    function applyManualRule(ruleKey) {
+      hideToast();
+      try {
+        const premises = parseAllPremises();
+        const ruleName = RULE_LABELS[ruleKey];
+        const ruleCategory = RULE_CATEGORIES[ruleKey];
+        const appliedItems = [{ name: ruleName, category: ruleCategory }];
+
+        // Regras de Inferência (1 a 5)
+        const inferenceMap = {
+          modus_ponens: ruleModusPonens,
+          modus_tollens: ruleModusTollens,
+          silogismo_hipotetico: ruleSilogismoHipotetico,
+          silogismo_disjuntivo: ruleSilogismoDisjuntivo,
+          eliminacao_conjuncao: ruleEliminacaoConjuncao
+        };
+
+        if (inferenceMap[ruleKey]) {
+          const res = inferenceMap[ruleKey](premises);
+          if (!res) {
+            showToast(`Não foi possível aplicar "${ruleName}" às premissas atuais. Verifique o formato necessário.`, 'error');
+            return;
+          }
+          const finalStr = res.results.map(r => formatAST(r)).join(', ');
+          renderResult(
+            finalStr,
+            `Aplicada manualmente: <strong class="text-white">${ruleName}</strong>.`,
+            [res.desc],
+            appliedItems
+          );
+          showToast(`${ruleName} (${ruleCategory}) aplicada!`, 'success');
+          return;
+        }
+
+        // Propriedades de Equivalência (6 a 13)
+        const transformer = EQUIVALENCE_TRANSFORMERS[ruleKey];
+        if (transformer) {
+          let anyApplied = false;
+          const steps = [];
+          const newPremises = premises.map(p => {
+            const res = transformOnce(p, transformer);
+            if (res.applied) {
+              anyApplied = true;
+              steps.push(`${ruleName}: ${formatAST(p)} ≡ ${formatAST(res.node)}`);
+              return res.node;
+            }
+            return p;
+          });
+
+          if (!anyApplied) {
+            showToast(`A propriedade "${ruleName}" não se aplica à estrutura da expressão atual.`, 'error');
+            return;
+          }
+
+          const finalStr = newPremises.map(n => formatAST(n)).join(', ');
+          renderResult(
+            finalStr,
+            `Equivalência aplicada: <strong class="text-white">${ruleName}</strong>.`,
+            steps,
+            appliedItems
+          );
+          showToast(`${ruleName} (${ruleCategory}) aplicada!`, 'success');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function useResultAsInput() {
+      if (!lastFinalResultStr) return;
+      pushHistory(inputEl.value);
+      // Remove o sufixo " (⊤)" caso seja uma identidade validada antes de jogar de volta na entrada
+      inputEl.value = lastFinalResultStr.replace(/\s*\(⊤\)$/, '');
+      updatePremisesChips();
+      showToast('Resultado movido para o visor de entrada.', 'info');
+    }
+
+    function copyResult() {
+      if (!lastFinalResultStr) return;
+      const temp = document.createElement('textarea');
+      temp.value = lastFinalResultStr;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+      showToast('Resultado copiado para a área de transferência!', 'success');
+    }
+
+    function loadPreset(expr, suggestedMode) {
+      pushHistory(inputEl.value);
+      inputEl.value = expr;
+      updatePremisesChips();
+      hideToast();
+      if (suggestedMode === 'auto') {
+        solveAuto();
+      } else {
+        try {
+          const parsed = parseAllPremises().map(p => formatAST(p)).join(', ');
+          renderResult(parsed, 'Exemplo carregado. Clique em uma regra ou em <strong>=</strong>.', [], []);
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+    }
+
+    // Inicializa estado visual
+    window.addEventListener('DOMContentLoaded', () => {
+      updatePremisesChips();
+    });
+  </script>
+</body>
+</html>
