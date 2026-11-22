@@ -2,11 +2,7 @@
 <html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Lógica Proposicional" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Resolvedor de Lógica Proposicional</title>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -37,18 +33,10 @@
     }
   </script>
   <style>
-    html, body {
-      touch-action: manipulation;
-    }
-
     body {
       background-color: #000000;
       color: #f4f4f6;
       -webkit-tap-highlight-color: transparent;
-    }
-
-    button, input, a {
-      touch-action: manipulation;
     }
 
     /* Botões do teclado fiel ao modelo visual */
@@ -1582,105 +1570,7 @@
     // Inicializa estado visual
     window.addEventListener('DOMContentLoaded', () => {
       updatePremisesChips();
-      initPreventDoubleTapZoom();
-      initPWA();
     });
-
-    /**
-     * =========================================================================
-     * 4. BLOQUEIO DE ZOOM POR DUPLO TOQUE (MOBILE) E CONFIGURAÇÃO PWA
-     * =========================================================================
-     */
-    function initPreventDoubleTapZoom() {
-      let lastTouchEnd = 0;
-      document.addEventListener('touchend', (event) => {
-        const now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-          event.preventDefault();
-        }
-        lastTouchEnd = now;
-      }, { passive: false });
-
-      document.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-      }, { passive: false });
-    }
-
-    function initPWA() {
-      // 1. Ícone SVG embutido para o Manifesto e Apple Touch Icon
-      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-        <rect width="512" height="512" rx="112" fill="#000000"/>
-        <rect x="32" y="32" width="448" height="448" rx="96" fill="#2b3453"/>
-        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="monospace" font-weight="bold" font-size="260">⊢</text>
-      </svg>`;
-      const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
-
-      const appleIcon = document.createElement('link');
-      appleIcon.rel = 'apple-touch-icon';
-      appleIcon.href = iconUrl;
-      document.head.appendChild(appleIcon);
-
-      // 2. Web App Manifest dinâmico
-      const manifest = {
-        name: 'Resolvedor de Lógica Proposicional',
-        short_name: 'Lógica AST',
-        description: 'Dedução natural, equivalências lógicas e motor AST em tempo real',
-        start_url: './',
-        display: 'standalone',
-        background_color: '#000000',
-        theme_color: '#000000',
-        orientation: 'portrait',
-        icons: [
-          {
-            src: iconUrl,
-            sizes: '192x192',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
-          },
-          {
-            src: iconUrl,
-            sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
-          }
-        ]
-      };
-
-      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-      const manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      manifestLink.href = URL.createObjectURL(manifestBlob);
-      document.head.appendChild(manifestLink);
-
-      // 3. Service Worker para habilitar critério de instalação e cache offline
-      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-        const swCode = `
-          const CACHE_NAME = 'logica-proposicional-v1';
-          self.addEventListener('install', (event) => {
-            self.skipWaiting();
-          });
-          self.addEventListener('activate', (event) => {
-            event.waitUntil(self.clients.claim());
-          });
-          self.addEventListener('fetch', (event) => {
-            event.respondWith(
-              caches.match(event.request).then((cached) => {
-                return cached || fetch(event.request).then((response) => {
-                  if (event.request.method === 'GET' && response.status === 200) {
-                    const copy = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-                  }
-                  return response;
-                }).catch(() => cached);
-              })
-            );
-          });
-        `;
-        const swBlob = new Blob([swCode], { type: 'application/javascript' });
-        const swUrl = URL.createObjectURL(swBlob);
-        navigator.serviceWorker.register(swUrl).catch(() => {});
-      }
-    }
   </script>
 </body>
 </html>
