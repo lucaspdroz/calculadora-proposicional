@@ -2,7 +2,11 @@
 <html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lógica Proposicional" />
   <title>Resolvedor de Lógica Proposicional</title>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -33,10 +37,18 @@
     }
   </script>
   <style>
+    html, body {
+      touch-action: manipulation;
+    }
+
     body {
       background-color: #000000;
       color: #f4f4f6;
       -webkit-tap-highlight-color: transparent;
+    }
+
+    button, input, a {
+      touch-action: manipulation;
     }
 
     /* Botões do teclado fiel ao modelo visual */
@@ -372,144 +384,162 @@
           <!-- Etiquetas de Classificação Explícita (Regra de Inferência vs Propriedade de Equivalência) -->
           <div id="final-classification-badges" class="flex flex-wrap items-center gap-2 mt-2"></div>
           <div id="final-rule-summary" class="text-xs text-zinc-400 mt-1.5">
-            Pressione <strong class="text-white">=</strong> para resolver automaticamente ou selecione uma das 13 regras abaixo.
+            Pressione <strong class="text-white">=</strong> para resolver automaticamente ou escolha uma das 13 regras abaixo.
           </div>
         </div>
 
-        <!-- Alerta / Mensagem de feedback (sem usar alert()) -->
-        <div id="feedback-toast" class="hidden mt-3 px-3.5 py-2.5 rounded-xl text-xs font-medium border"></div>
+        <!-- Mensagem de feedback / erro / aviso -->
+        <div id="feedback-toast" class="hidden mt-3 text-xs px-3.5 py-2.5 rounded-xl border"></div>
 
-        <!-- Detalhes colapsáveis (Discreto para manter Exibição: Final limpa) -->
-        <details id="steps-details" class="mt-3 group">
-          <summary class="text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer select-none list-none flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-            <span>Ver detalhes / transformações aplicadas (<span id="steps-count">0</span>)</span>
+        <!-- Passos aplicados (colapsável / discreto para manter foco no Resultado Final) -->
+        <details class="mt-3 group">
+          <summary class="cursor-pointer text-[11px] font-medium text-zinc-500 hover:text-zinc-300 select-none flex items-center gap-1.5">
+            <span>Ver detalhes das regras aplicadas (<span id="steps-count">0</span>)</span>
           </summary>
-          <ol id="steps-list" class="mt-2.5 space-y-1.5 text-xs font-mono text-zinc-300 bg-[#0a0a0d] border border-[#191920] rounded-xl p-3 max-h-44 overflow-y-auto">
-            <li class="text-zinc-500 font-sans">Nenhuma transformação executada ainda.</li>
-          </ol>
+          <ul id="steps-list" class="mt-2 space-y-1.5 text-xs font-mono text-zinc-300 bg-[#09090d] border border-[#1a1a22] rounded-xl p-3 max-h-40 overflow-y-auto">
+            <li class="text-zinc-500 font-sans">Nenhuma regra aplicada ainda.</li>
+          </ul>
         </details>
       </div>
 
-      <!-- PAINEL INTERATIVO DAS 13 REGRAS E PROPRIEDADES -->
-      <!-- <div id="rules-section" class="bg-[#060608] border border-[#222226] rounded-2xl p-5 sm:p-6 shadow-xl">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-          <div>
-            <h2 class="text-sm font-bold uppercase tracking-wider text-white">13 Regras de Inferência e Propriedades</h2>
-            <p class="text-xs text-zinc-400 mt-0.5">Clique em uma regra para aplicá-la diretamente sobre a expressão/premissas atuais</p>
+      <!-- PAINEL INTERATIVO DAS 13 REGRAS E PROPRIEDADES (DROPDOWN) -->
+      <div id="rules-section" class="relative">
+        <button
+          id="btn-rules-dropdown"
+          type="button"
+          onclick="toggleRulesMenu(event)"
+          aria-expanded="false"
+          class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#060608] hover:bg-[#0d0d12] border border-[#222226] hover:border-[#2b3453] text-left transition-colors shadow-xl"
+        >
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-white block">13 Regras de Inferência e Propriedades</span>
+              <span class="text-[11px] text-zinc-400">Clique para escolher e aplicar uma regra manualmente</span>
+            </div>
+          </div>
+          <svg id="icon-rules-chevron" class="w-4 h-4 text-zinc-400 transition-transform duration-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <div
+          id="rules-dropdown"
+          class="hidden absolute left-0 right-0 mt-2 bg-[#0b0b0f] border border-[#24242d] rounded-2xl p-3 shadow-2xl z-40 max-h-96 overflow-y-auto"
+        >
+          <div class="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-2">
+            Selecione uma regra ou propriedade para aplicar
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            
+            <button type="button" onclick="selectRuleFromDropdown('modus_ponens')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-emerald-300">1. Modus Ponens</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MP</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, A ⊢ B</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('modus_tollens')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-emerald-300">2. Modus Tollens</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MT</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, ¬B ⊢ ¬A</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('silogismo_hipotetico')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-emerald-300">3. Silogismo Hipotético</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SH</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, B → C ⊢ A → C</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('silogismo_disjuntivo')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-emerald-300">4. Silogismo Disjuntivo</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SD</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∨ B, ¬A ⊢ B</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('eliminacao_conjuncao')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-emerald-300">5. Eliminação da Conjunção</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">EC</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ⊢ A e B</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('comutativa')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">6. Propriedade Comutativa</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">COM</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ≡ B ∧ A ; A ∨ B ≡ B ∨ A</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('associativa')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">7. Propriedade Associativa</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">ASS</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">(A ∧ B) ∧ C ≡ A ∧ (B ∧ C)</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('distributiva')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">8. Propriedade Distributiva</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DIST</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ (B ∨ C) ≡ (A ∧ B) ∨ (A ∧ C)</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('de_morgan')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">9. Leis de De Morgan</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DM</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">¬(A ∧ B) ≡ ¬A ∨ ¬B</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('dupla_negacao')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">10. Dupla Negação</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DN</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">¬¬A ≡ A</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('contraposicao')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">11. Contraposição</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">CONT</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬B → ¬A</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('bicondicional')" class="rule-card text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">12. Bicondicional</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">BIC</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A ↔ B ≡ (A → B) ∧ (B → A)</div>
+            </button>
+
+            <button type="button" onclick="selectRuleFromDropdown('definicao_implicacao')" class="rule-card sm:col-span-2 text-left p-2.5 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white group-hover:text-indigo-300">13. Definição da Implicação</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">IMP</span>
+              </div>
+              <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬A ∨ B</div>
+            </button>
+
           </div>
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          
-          <button onclick="applyManualRule('modus_ponens')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">1. Modus Ponens</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MP</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, A ⊢ B</div>
-          </button>
-
-          <button onclick="applyManualRule('modus_tollens')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">2. Modus Tollens</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">MT</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, ¬B ⊢ ¬A</div>
-          </button>
-
-          <button onclick="applyManualRule('silogismo_hipotetico')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">3. Silogismo Hipotético</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SH</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B, B → C ⊢ A → C</div>
-          </button>
-
-          <button onclick="applyManualRule('silogismo_disjuntivo')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">4. Silogismo Disjuntivo</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">SD</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∨ B, ¬A ⊢ B</div>
-          </button>
-
-          <button onclick="applyManualRule('eliminacao_conjuncao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-emerald-300">5. Eliminação da Conjunção</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">EC</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ⊢ A e B</div>
-          </button>
-
-          <button onclick="applyManualRule('comutativa')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">6. Propriedade Comutativa</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">COM</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ B ≡ B ∧ A ; A ∨ B ≡ B ∨ A</div>
-          </button>
-
-          <button onclick="applyManualRule('associativa')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">7. Propriedade Associativa</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">ASS</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">(A ∧ B) ∧ C ≡ A ∧ (B ∧ C)</div>
-          </button>
-
-          <button onclick="applyManualRule('distributiva')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">8. Propriedade Distributiva</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DIST</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ∧ (B ∨ C) ≡ (A ∧ B) ∨ (A ∧ C)</div>
-          </button>
-
-          <button onclick="applyManualRule('de_morgan')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">9. Leis de De Morgan</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DM</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">¬(A ∧ B) ≡ ¬A ∨ ¬B</div>
-          </button>
-
-          <button onclick="applyManualRule('dupla_negacao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">10. Dupla Negação</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">DN</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">¬¬A ≡ A</div>
-          </button>
-
-          <button onclick="applyManualRule('contraposicao')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">11. Contraposição</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">CONT</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬B → ¬A</div>
-          </button>
-
-          <button onclick="applyManualRule('bicondicional')" class="rule-card text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">12. Bicondicional</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">BIC</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A ↔ B ≡ (A → B) ∧ (B → A)</div>
-          </button>
-
-          <button onclick="applyManualRule('definicao_implicacao')" class="rule-card sm:col-span-2 text-left p-3 rounded-xl bg-[#0d0d12] hover:bg-[#151722] border border-[#202028] hover:border-[#2b3453] transition-all group">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white group-hover:text-indigo-300">13. Definição da Implicação</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181820] text-zinc-400">IMP</span>
-            </div>
-            <div class="text-[11px] font-mono text-zinc-400 mt-1">A → B ≡ ¬A ∨ B</div>
-          </button>
-
-        </div>
-      </div> -->
+      </div>
 
     </section>
   </main>
@@ -996,7 +1026,8 @@
       dupla_negacao: 'Dupla Negação',
       contraposicao: 'Contraposição',
       bicondicional: 'Bicondicional',
-      definicao_implicacao: 'Definição da Implicação'
+      definicao_implicacao: 'Definição da Implicação',
+      avaliacao_constantes: 'Avaliação de Constantes (⊤ / ⊥)'
     };
 
     const RULE_CATEGORIES = {
@@ -1012,8 +1043,49 @@
       dupla_negacao: 'Propriedade de Equivalência',
       contraposicao: 'Propriedade de Equivalência',
       bicondicional: 'Propriedade de Equivalência',
-      definicao_implicacao: 'Propriedade de Equivalência'
+      definicao_implicacao: 'Propriedade de Equivalência',
+      avaliacao_constantes: 'Propriedade de Equivalência'
     };
+
+    // Simplifica expressões envolvendo constantes lógicas (⊤ e ⊥)
+    function simplifyConstantsOnce(node) {
+      if (!node) return null;
+      // ¬⊤ ≡ ⊥ e ¬⊥ ≡ ⊤
+      if (node.type === 'NOT' && node.operand.type === 'CONST') {
+        return { type: 'CONST', value: !node.operand.value };
+      }
+      // Conjunção: ⊥ ∧ X ≡ ⊥ ; X ∧ ⊥ ≡ ⊥ ; ⊤ ∧ X ≡ X ; X ∧ ⊤ ≡ X
+      if (node.type === 'AND') {
+        if ((node.left.type === 'CONST' && !node.left.value) || (node.right.type === 'CONST' && !node.right.value)) {
+          return { type: 'CONST', value: false };
+        }
+        if (node.left.type === 'CONST' && node.left.value) return cloneAST(node.right);
+        if (node.right.type === 'CONST' && node.right.value) return cloneAST(node.left);
+      }
+      // Disjunção: ⊤ ∨ X ≡ ⊤ ; X ∨ ⊤ ≡ ⊤ ; ⊥ ∨ X ≡ X ; X ∨ ⊥ ≡ X
+      if (node.type === 'OR') {
+        if ((node.left.type === 'CONST' && node.left.value) || (node.right.type === 'CONST' && node.right.value)) {
+          return { type: 'CONST', value: true };
+        }
+        if (node.left.type === 'CONST' && !node.left.value) return cloneAST(node.right);
+        if (node.right.type === 'CONST' && !node.right.value) return cloneAST(node.left);
+      }
+      // Implicação: ⊥ → X ≡ ⊤ ; X → ⊤ ≡ ⊤ ; ⊤ → X ≡ X ; X → ⊥ ≡ ¬X
+      if (node.type === 'IMP') {
+        if ((node.left.type === 'CONST' && !node.left.value) || (node.right.type === 'CONST' && node.right.value)) {
+          return { type: 'CONST', value: true };
+        }
+        if (node.left.type === 'CONST' && node.left.value) return cloneAST(node.right);
+        if (node.right.type === 'CONST' && !node.right.value) {
+          return { type: 'NOT', operand: cloneAST(node.left) };
+        }
+      }
+      // Bicondicional direto entre constantes: ⊤ ↔ ⊤ ≡ ⊤ ; ⊥ ↔ ⊥ ≡ ⊤ ; ⊤ ↔ ⊥ ≡ ⊥
+      if (node.type === 'IFF' && node.left.type === 'CONST' && node.right.type === 'CONST') {
+        return { type: 'CONST', value: node.left.value === node.right.value };
+      }
+      return null;
+    }
 
     // Detecta se uma fórmula Lado1 ↔ Lado2 corresponde a uma das 8 propriedades de equivalência
     function detectEquivalenceIdentity(ast) {
@@ -1122,7 +1194,43 @@
       }
     }
 
-    // Fecha o menu hambúrguer e o dropdown de exemplos ao clicar fora deles
+    // Controle do Menu Hambúrguer
+    function toggleModeMenu(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('mode-dropdown');
+      const iconOpen = document.getElementById('icon-hamburger');
+      const iconClose = document.getElementById('icon-close-menu');
+      const btn = document.getElementById('btn-hamburger');
+      const isHidden = dropdown.classList.contains('hidden');
+
+      if (isHidden) {
+        dropdown.classList.remove('hidden');
+        iconOpen.classList.add('hidden');
+        iconClose.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        closeModeMenu();
+      }
+    }
+
+    function closeModeMenu() {
+      const dropdown = document.getElementById('mode-dropdown');
+      const iconOpen = document.getElementById('icon-hamburger');
+      const iconClose = document.getElementById('icon-close-menu');
+      const btn = document.getElementById('btn-hamburger');
+      if (!dropdown) return;
+      dropdown.classList.add('hidden');
+      iconOpen.classList.remove('hidden');
+      iconClose.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function selectModeFromMenu(mode) {
+      setMode(mode);
+      closeModeMenu();
+    }
+
+    // Fecha o menu hambúrguer, dropdown de exemplos e dropdown das 13 regras ao clicar fora deles
     document.addEventListener('click', (e) => {
       const container = document.getElementById('mode-menu-container');
       if (container && !container.contains(e.target)) {
@@ -1132,7 +1240,42 @@
       if (presetsContainer && !presetsContainer.contains(e.target)) {
         closePresetsMenu();
       }
+      const rulesContainer = document.getElementById('rules-section');
+      if (rulesContainer && !rulesContainer.contains(e.target)) {
+        closeRulesMenu();
+      }
     });
+
+    function toggleRulesMenu(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('rules-dropdown');
+      const chevron = document.getElementById('icon-rules-chevron');
+      const btn = document.getElementById('btn-rules-dropdown');
+      const isHidden = dropdown.classList.contains('hidden');
+
+      if (isHidden) {
+        dropdown.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        closeRulesMenu();
+      }
+    }
+
+    function closeRulesMenu() {
+      const dropdown = document.getElementById('rules-dropdown');
+      const chevron = document.getElementById('icon-rules-chevron');
+      const btn = document.getElementById('btn-rules-dropdown');
+      if (!dropdown) return;
+      dropdown.classList.add('hidden');
+      chevron.classList.remove('rotate-180');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function selectRuleFromDropdown(ruleKey) {
+      closeRulesMenu();
+      applyManualRule(ruleKey);
+    }
 
     function togglePresetsMenu(event) {
       if (event) event.stopPropagation();
@@ -1409,9 +1552,10 @@
           for (const { key, fn } of inferenceRules) {
             const res = fn(premises);
             if (res) {
-              for (const newAst of res.results) {
-                if (!premises.some(p => astEquals(p, newAst))) {
-                  premises.push(newAst);
+              for (const newNode of res.results) {
+                const alreadyExists = premises.some(existing => astEquals(existing, newNode));
+                if (!alreadyExists) {
+                  premises.push(newNode);
                   steps.push(res.desc);
                   appliedMap.set(key, { name: RULE_LABELS[key], category: RULE_CATEGORIES[key] });
                   changed = true;
@@ -1421,15 +1565,29 @@
           }
         }
 
-        // Fase 2: Simplificar equivalências automáticas seguras (Dupla Negação, De Morgan, Bicondicional, Def. Implicação)
+        // Fase 2: Simplificar equivalências automáticas seguras e avaliação de constantes (⊤ / ⊥)
         const autoEquivKeys = ['dupla_negacao', 'de_morgan', 'bicondicional', 'definicao_implicacao'];
         premises = premises.map(p => {
           let curr = p;
           let eqChanged = true;
           let eqGuard = 0;
-          while (eqChanged && eqGuard < 15) {
+          while (eqChanged && eqGuard < 25) {
             eqChanged = false;
             eqGuard++;
+
+            // Primeiro reduz constantes (⊤ / ⊥) sempre que possível
+            const constRes = transformOnce(curr, simplifyConstantsOnce);
+            if (constRes.applied && !astEquals(constRes.node, curr)) {
+              steps.push(`${RULE_LABELS.avaliacao_constantes}: ${formatAST(curr)} ≡ ${formatAST(constRes.node)}`);
+              appliedMap.set('avaliacao_constantes', {
+                name: RULE_LABELS.avaliacao_constantes,
+                category: RULE_CATEGORIES.avaliacao_constantes
+              });
+              curr = constRes.node;
+              eqChanged = true;
+              continue;
+            }
+
             for (const key of autoEquivKeys) {
               const t = transformOnce(curr, EQUIVALENCE_TRANSFORMERS[key]);
               if (t.applied && !astEquals(t.node, curr)) {
@@ -1570,7 +1728,105 @@
     // Inicializa estado visual
     window.addEventListener('DOMContentLoaded', () => {
       updatePremisesChips();
+      initPreventDoubleTapZoom();
+      initPWA();
     });
+
+    /**
+     * =========================================================================
+     * 4. BLOQUEIO DE ZOOM POR DUPLO TOQUE (MOBILE) E CONFIGURAÇÃO PWA
+     * =========================================================================
+     */
+    function initPreventDoubleTapZoom() {
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (event) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
+
+      document.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+      }, { passive: false });
+    }
+
+    function initPWA() {
+      // 1. Ícone SVG embutido para o Manifesto e Apple Touch Icon
+      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="112" fill="#000000"/>
+        <rect x="32" y="32" width="448" height="448" rx="96" fill="#2b3453"/>
+        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="monospace" font-weight="bold" font-size="260">⊢</text>
+      </svg>`;
+      const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
+
+      const appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      appleIcon.href = iconUrl;
+      document.head.appendChild(appleIcon);
+
+      // 2. Web App Manifest dinâmico
+      const manifest = {
+        name: 'Resolvedor de Lógica Proposicional',
+        short_name: 'Lógica AST',
+        description: 'Dedução natural, equivalências lógicas e motor AST em tempo real',
+        start_url: './',
+        display: 'standalone',
+        background_color: '#000000',
+        theme_color: '#000000',
+        orientation: 'portrait',
+        icons: [
+          {
+            src: iconUrl,
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          },
+          {
+            src: iconUrl,
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = URL.createObjectURL(manifestBlob);
+      document.head.appendChild(manifestLink);
+
+      // 3. Service Worker para habilitar critério de instalação e cache offline
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+        const swCode = `
+          const CACHE_NAME = 'logica-proposicional-v1';
+          self.addEventListener('install', (event) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (event) => {
+            event.waitUntil(self.clients.claim());
+          });
+          self.addEventListener('fetch', (event) => {
+            event.respondWith(
+              caches.match(event.request).then((cached) => {
+                return cached || fetch(event.request).then((response) => {
+                  if (event.request.method === 'GET' && response.status === 200) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                  }
+                  return response;
+                }).catch(() => cached);
+              })
+            );
+          });
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+    }
   </script>
 </body>
 </html>
